@@ -2,10 +2,9 @@ import scipy as sp
 import numpy as np
       
 class MarkovModel(object):
-    def __init__(self, tmatrix, cmatrix=None, fmatrix=None, states=None, lag_step=1):
+    def __init__(self, tmatrix, cmatrix=None, states=None, lag_step=1):
         self.transition_matrix = tmatrix
         self.count_matrix = cmatrix
-        self.flux_matrix = fmatrix
         self.ordered_states_list = states
         self.lag_step = lag_step
         if not np.allclose(tmatrix.sum(axis=1), 1):
@@ -27,7 +26,7 @@ class MarkovModel(object):
     
     def timescales(self, n, dt):
         l, v = self.spectrum()
-        return -(self.lag_step*dt)/np.log(np.abs(l[1:n]))
+        return -(self.lag_step*dt)/np.log(np.abs(l[1:n+1]))
 
 def create_from_trajectories(trajectories, states, lag_step) :
     n_skipped = 0
@@ -59,13 +58,11 @@ def create_from_trajectories(trajectories, states, lag_step) :
     count_matrix   = np.delete(count_matrix, disconnected_states, axis=0)
     count_matrix   = np.delete(count_matrix, disconnected_states, axis=1)
     updated_states = np.delete(states, disconnected_states, axis=0).tolist()
-    flux_matrix    = np.delete(flux_matrix, disconnected_states, axis=0)
-    flux_matrix    = np.delete(flux_matrix, disconnected_states, axis=1)
-    
+   
     trans_matrix = (count_matrix / np.sum(count_matrix, axis=1).reshape((-1,1)))
     if not np.allclose(trans_matrix.sum(axis=1), 1):
         raise ValueError(f'Failed to build a stochastic transition matrix!')
-    model = MarkovModel(tmatrix=trans_matrix, cmatrix=count_matrix, fmatrix=flux_matrix, states=updated_states, lag_step=lag_step)
+    model = MarkovModel(tmatrix=trans_matrix, cmatrix=count_matrix, states=updated_states, lag_step=lag_step)
     l, v = model.spectrum();
     
     adj_matrix = sp.sparse.csr_matrix( (count_matrix > 0).astype(int) ) 
@@ -96,4 +93,4 @@ def create_from_trajectories(trajectories, states, lag_step) :
             updated_traj_list.append( np.array(updated_traj) )
         trajectories_output = updated_traj_list
 
-    return model, trajectories_output, fluxes_output 
+    return model, trajectories_output
